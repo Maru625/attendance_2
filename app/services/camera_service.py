@@ -26,11 +26,20 @@ INJECT_DURATION = 5  # 이미지 주입 시간 (초)
 
 
 def get_image_path(name: str) -> str | None:
-    """이미지 확장자 (.jpg, .png, .jpeg) 지원"""
-    base_path = os.path.join("images", name)
-    for ext in [".jpg", ".png", ".jpeg"]:
-        if os.path.exists(base_path + ext):
-            return base_path + ext
+    """이미지 이름을 기반으로 실제 파일 경로 찾기 (.jpg, .png, .jpeg 대소문자 무관)"""
+    images_dir = "images"
+    if not os.path.exists(images_dir):
+        return None
+        
+    try:
+        for filename in os.listdir(images_dir):
+            file_base, file_ext = os.path.splitext(filename)
+            # 파일 이름이 일치하고, 확장자가 이미지인 경우
+            if file_base == name and file_ext.lower() in [".jpg", ".jpeg", ".png"]:
+                return os.path.join(images_dir, filename)
+    except Exception as e:
+        logger.error(f"이미지 폴더 읽기 오류: {e}")
+        
     return None
 
 
