@@ -25,17 +25,29 @@ _thread: threading.Thread | None = None
 INJECT_DURATION = 5  # 이미지 주입 시간 (초)
 
 
+import unicodedata
+
 def get_image_path(name: str) -> str | None:
-    """이미지 이름을 기반으로 실제 파일 경로 찾기 (.jpg, .png, .jpeg 대소문자 무관)"""
-    images_dir = "images"
+    """이미지 이름을 기반으로 실제 파일 경로 찾기 (.jpg, .png, .jpeg 대소문자 무관, 유니코드 정규화)"""
+    # 현재 파일(camera_service.py) 기준 3단계 위가 프로젝트 루트
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    images_dir = os.path.join(base_dir, "images")
+    
     if not os.path.exists(images_dir):
+        logger.error(f"이미지 폴더를 찾을 수 없습니다: {images_dir}")
         return None
+        
+    # 입력된 이름 정규화 (Mac/Window 복사 시 발생하는 자소 분리 문제 해결)
+    target_name = unicodedata.normalize('NFC', name).strip()
         
     try:
         for filename in os.listdir(images_dir):
             file_base, file_ext = os.path.splitext(filename)
+            # 디렉토리에 있는 파일 이름도 정규화
+            normalized_base = unicodedata.normalize('NFC', file_base).strip()
+            
             # 파일 이름이 일치하고, 확장자가 이미지인 경우
-            if file_base == name and file_ext.lower() in [".jpg", ".jpeg", ".png"]:
+            if normalized_base == target_name and file_ext.lower() in [".jpg", ".jpeg", ".png"]:
                 return os.path.join(images_dir, filename)
     except Exception as e:
         logger.error(f"이미지 폴더 읽기 오류: {e}")
