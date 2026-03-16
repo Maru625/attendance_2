@@ -64,9 +64,14 @@ def trigger_camera(name: str):
         logger.error(f"이미지를 찾을 수 없습니다: {name}")
         return
 
-    img = cv2.imread(image_path)
-    if img is None:
-        logger.error(f"이미지를 로드할 수 없습니다: {image_path}")
+    # cv2.imread 대신 numpy와 imdecode를 사용하여 한글 경로 문제 해결
+    try:
+        img_array = np.fromfile(image_path, np.uint8)
+        img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+        if img is None:
+            raise ValueError("imdecode returned None")
+    except Exception as e:
+        logger.error(f"이미지를 로드할 수 없습니다: {image_path} ({e})")
         return
 
     # BGR → RGB (pyvirtualcam은 RGB)
