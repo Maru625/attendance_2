@@ -102,7 +102,17 @@ chcp 65001
 **방법 A. Cloudflare Tunnels / ngrok 사용 (가장 추천 & 안전)**
 공유기 포트포워딩 없이 가장 쉽고 안전하게 도메인을 연결하는 방법입니다.
 1. **Cloudflare Tunnels**: Cloudflare에 도메인을 등록 후 Zero Trust 대시보드에서 터널을 생성합니다. 서버 PC에 커넥터를 설치하고 `localhost:5000`으로 라우팅하면 무료로 HTTPS 도메인 연결이 완료됩니다.
-2. **ngrok**: 터미널에 `ngrok http 5000`을 입력하면 임시 도메인이 발급됩니다. (고정 도메인은 유료)
+2. **ngrok (가장 간편한 방법)**
+   별도의 공유기 설정 없이 대상 PC에서 터미널 명령어 한 줄로 외부 접속을 허용합니다.
+   * **설치**: [ngrok 공식 홈페이지](https://ngrok.com/)에서 가입 후 프로그램을 다운로드하거나, 터미널에서 `winget install ngrok` (Windows)로 설치합니다.
+   * **초기 설정**: 가입 후 제공되는 Authtoken을 터미널에 입력합니다. (`ngrok config add-authtoken 본인의토큰`)
+   * **실행 방법**: **대상 PC**에서 서버를 실행(`uv run uvicorn...`)해둔 상태로, 새 터미널 창을 열고 아래 명령어를 입력합니다.
+     ```bash
+     ngrok http 5000
+     ```
+   * **URL 확인 및 주의사항**: 
+     * 실행하면 검은 화면에 `Forwarding  https://abcd-12-34-56.ngrok-free.app -> http://localhost:5000` 와 같이 뜹니다. 이 `https://...` 주소가 스마트폰 등 외부에서 접속할 주소입니다.
+     * ⚠️ **무료 버전의 한계**: ngrok을 **껐다가 다시 켜면 주소가 매번 바뀝니다**. 고정된 웹 주소를 계속 사용하고 싶다면 ngrok 유료 요금제를 쓰거나, 개인 도메인 구매 후 **Cloudflare Tunnels**(평생 무료)를 사용하는 것을 강력히 추천합니다.
 
 **방법 B. 공유기 포트포워딩 + DNS A 레코드 설정 (전통적 방법)**
 1. **Public IP 확인**: 서버가 있는 네트워크의 공인 IP를 확인합니다. (네이버에 "내 IP" 검색)
