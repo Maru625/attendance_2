@@ -144,6 +144,7 @@ def _camera_loop():
                     # === 패스스루 모드 ===
                     ret, raw_frame = cap.read()
                     if not ret:
+                        time.sleep(0.5) # 카메라 끊김 시 CPU 100% 스핀락 방지
                         continue
                     # BGR → RGB
                     frame = cv2.cvtColor(raw_frame, cv2.COLOR_BGR2RGB)

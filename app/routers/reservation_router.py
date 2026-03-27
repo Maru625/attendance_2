@@ -26,6 +26,8 @@ def _parse_datetime(date: str, time: str) -> datetime:
         return datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
 
 
+from datetime import datetime, timedelta
+
 def load_saved_jobs():
     """서버 시작 시 미래의 예약들을 스케줄러에 등록"""
     reservations = reservation_service.get_all()
@@ -40,6 +42,29 @@ def load_saved_jobs():
         except Exception as e:
             logger.error(f"예약 스케줄 복원 오류: {e}")
     logger.info(f"총 {count}개의 미래 예약을 스케줄러에 등록했습니다.")
+
+
+def cleanup_old_reservations():
+    """7일이 지난 과거 예약 자동 삭제 (매일 자정 실행)"""
+    reservations = reservation_service.get_all()
+    cutoff_dt = datetime.now() - timedelta(days=7)
+    count = 0
+    
+    for r in reservations:
+        try:
+            target_dt = _parse_datetime(r['date'], r['time'])
+            if target_dt < cutoff_dt:
+                reservation_service.remove(r['id'])
+                count += 1
+        except Exception as e:
+            logger.error(f"예약 자동 청소 오류: {e}")
+            
+    if count > 0:
+        logger.info(f"7일이 지난 과거 예약 {count}건을 자동 삭제했습니다.")
+
+
+# 매일 자정(00:00)에 과거 예약 청소 스케줄 등록
+scheduler.add_job(cleanup_old_reservations, 'cron', hour=0, minute=0, id='cleanup_7days_job', replace_existing=True)
 
 # 서버 시동 시 기존 예약 복원
 load_saved_jobs()
