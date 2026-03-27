@@ -5,6 +5,10 @@ from app.schemas import Reservation
 from app.services.camera_service import get_image_path, trigger_camera
 from app.services import reservation_service
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.jobstores.base import JobLookupError
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -20,6 +24,25 @@ def _parse_datetime(date: str, time: str) -> datetime:
         return datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
     else:
         return datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
+
+
+def load_saved_jobs():
+    """서버 시작 시 미래의 예약들을 스케줄러에 등록"""
+    reservations = reservation_service.get_all()
+    now = datetime.now()
+    count = 0
+    for r in reservations:
+        try:
+            target_dt = _parse_datetime(r['date'], r['time'])
+            if target_dt > now:
+                scheduler.add_job(trigger_camera, 'date', run_date=target_dt, args=[r['name']], id=r['id'], replace_existing=True)
+                count += 1
+        except Exception as e:
+            logger.error(f"예약 스케줄 복원 오류: {e}")
+    logger.info(f"총 {count}개의 미래 예약을 스케줄러에 등록했습니다.")
+
+# 서버 시동 시 기존 예약 복원
+load_saved_jobs()
 
 
 @router.post("/schedule")
@@ -55,8 +78,8 @@ async def schedule_reservation(reservation: Reservation):
     res_entry['target_dt'] = target_dt_str
     res_entry = reservation_service.add(res_entry)
 
-    # 스케줄링
-    scheduler.add_job(trigger_camera, 'date', run_date=target_dt, args=[reservation.name])
+    # 스케줄링 (ID 지정)
+    scheduler.add_job(trigger_camera, 'date', run_date=target_dt, args=[reservation.name], id=res_entry['id'], replace_existing=True)
     message = f"{target_dt_str}에 예약되었습니다."
 
     return {"message": message, "reservation": res_entry}
@@ -94,8 +117,8 @@ async def update_reservation(reservation_id: str, reservation: Reservation):
     if result is None:
         return JSONResponse(status_code=404, content={"message": "해당 예약을 찾을 수 없습니다."})
 
-    # 새 시간으로 스케줄 재등록
-    scheduler.add_job(trigger_camera, 'date', run_date=target_dt, args=[reservation.name])
+    # 새 시간으로 스케줄 덮어쓰기 (기존 작업이 있으면 교체됨)
+    scheduler.add_job(trigger_camera, 'date', run_date=target_dt, args=[reservation.name], id=reservation_id, replace_existing=True)
     
     return {"message": f"{target_dt_str}으로 수정되었습니다.", "reservation": result}
 
@@ -103,9 +126,17 @@ async def update_reservation(reservation_id: str, reservation: Reservation):
 @router.delete("/schedule/{reservation_id}")
 async def delete_reservation(reservation_id: str):
     """예약 삭제"""
+    # 저장소에서 삭제
     success = reservation_service.remove(reservation_id)
     if not success:
         return JSONResponse(status_code=404, content={"message": "해당 예약을 찾을 수 없습니다."})
+        
+    # 스케줄러에서 작업 취소
+    try:
+        scheduler.remove_job(reservation_id)
+    except JobLookupError:
+        pass # 이미 실행되었거나 없는 작업은 무시
+        
     return {"message": "예약이 삭제되었습니다."}
 
 
