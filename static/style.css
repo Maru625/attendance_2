@@ -28,7 +28,7 @@ body {
     min-height: 100vh;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start; /* Changed from center to allow mobile scroll */
     background: var(--g-bg);
     overflow-x: hidden;
     padding: 20px;
@@ -60,6 +60,7 @@ body {
     max-width: 900px;
     flex-wrap: wrap;
     justify-content: center;
+    margin: auto; /* Allow vertical centering when there is space */
 }
 
 .card {
@@ -110,6 +111,7 @@ h2 {
 }
 
 input[type="text"],
+input[type="number"],
 input[type="date"],
 input[type="time"] {
     width: 100%;
@@ -133,6 +135,19 @@ input:focus {
 }
 
 .row .input-group {
+    flex: 1;
+}
+
+.time-container {
+    display: flex;
+    gap: 10px;
+}
+
+.time-container .time-input {
+    flex: 2;
+}
+
+.time-container .sec-input {
     flex: 1;
 }
 

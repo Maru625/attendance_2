@@ -13,7 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const seconds = String(now.getSeconds()).padStart(2, '0');
     
     dateInput.value = `${year}-${month}-${day}`;
-    timeInput.value = `${hours}:${minutes}:${seconds}`;
+    timeInput.value = `${hours}:${minutes}`;
+    document.getElementById('second').value = seconds;
     
     loadReservations();
     
@@ -32,7 +33,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const name = document.getElementById('name').value;
         const date = document.getElementById('date').value;
-        const time = document.getElementById('time').value;
+        
+        let timeVal = document.getElementById('time').value;
+        const secVal = document.getElementById('second').value.padStart(2, '0') || '00';
+        if (timeVal.split(':').length === 3) {
+            timeVal = timeVal.split(':').slice(0, 2).join(':');
+        }
+        const time = `${timeVal}:${secVal}`;
         const type = document.querySelector('input[name="type"]:checked').value;
         
         try {
@@ -123,7 +130,16 @@ function openEdit(id, name, date, time, type) {
     document.getElementById('editId').value = id;
     document.getElementById('editName').value = name;
     document.getElementById('editDate').value = date;
-    document.getElementById('editTime').value = time;
+    
+    let timeParts = time.split(':');
+    if (timeParts.length === 3) {
+        document.getElementById('editTime').value = `${timeParts[0]}:${timeParts[1]}`;
+        document.getElementById('editSecond').value = timeParts[2];
+    } else {
+        document.getElementById('editTime').value = time;
+        document.getElementById('editSecond').value = '00';
+    }
+    
     document.querySelector(`input[name="editType"][value="${type}"]`).checked = true;
     document.getElementById('editModal').style.display = 'flex';
 }
@@ -136,7 +152,13 @@ async function saveEdit() {
     const id = document.getElementById('editId').value;
     const name = document.getElementById('editName').value;
     const date = document.getElementById('editDate').value;
-    const time = document.getElementById('editTime').value;
+    
+    let editTimeVal = document.getElementById('editTime').value;
+    const editSecVal = document.getElementById('editSecond').value.padStart(2, '0') || '00';
+    if (editTimeVal.split(':').length === 3) {
+        editTimeVal = editTimeVal.split(':').slice(0, 2).join(':');
+    }
+    const time = `${editTimeVal}:${editSecVal}`;
     const type = document.querySelector('input[name="editType"]:checked').value;
 
     try {

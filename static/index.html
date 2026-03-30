@@ -27,7 +27,10 @@
                     </div>
                     <div class="input-group">
                         <label for="time">시간</label>
-                        <input type="time" id="time" step="1" required>
+                        <div class="time-container">
+                            <input type="time" id="time" required class="time-input">
+                            <input type="number" id="second" min="0" max="59" placeholder="초" required class="sec-input" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(-2)">
+                        </div>
                     </div>
                 </div>
 
@@ -85,7 +88,10 @@
                 </div>
                 <div class="input-group">
                     <label for="editTime">시간</label>
-                    <input type="time" id="editTime" step="1" required>
+                    <div class="time-container">
+                        <input type="time" id="editTime" required class="time-input">
+                        <input type="number" id="editSecond" min="0" max="59" placeholder="초" required class="sec-input" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(-2)">
+                    </div>
                 </div>
             </div>
             <div class="input-group">
