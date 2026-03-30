@@ -84,7 +84,7 @@ function switchTab(type) {
 
 async function loadReservations() {
     try {
-        const response = await fetch('/reservations');
+        const response = await fetch(`/reservations?t=${new Date().getTime()}`, { cache: 'no-store' });
         const reservations = await response.json();
         
         const listEl = document.getElementById('reservationList');
