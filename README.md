@@ -55,9 +55,12 @@ attendance_2/
 
 ## 🚀 설치
 
-### 1) 의존성 설치
+### 1) 의존성 설치 / sync
+
+`requests` 같은 모듈 에러가 나면 먼저 의존성을 다시 맞춰주세요.
 
 ```powershell
+cd C:\Users\HJW\Documents\Dev\attendance_2
 uv sync
 ```
 
@@ -66,6 +69,8 @@ uv sync
 ```powershell
 pip install -r requirements.txt
 ```
+
+권장 방식은 `uv sync`입니다. `pyproject.toml`과 `uv.lock` 기준으로 환경을 맞춰줍니다.
 
 ### 2) 직원 정보 설정
 
@@ -115,6 +120,7 @@ uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 이 스크립트는:
 - 8000 포트를 ngrok으로 터널링
 - 로그를 `ngrok.log`에 저장
+- 기본적으로 터미널 창이 열려 있는 방식입니다.
 
 ### 방법 2) 서버와 ngrok 각각 실행
 
@@ -142,9 +148,45 @@ uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 ### ngrok 주소 확인
 
-- 실행 창 출력 확인
-- 또는 `ngrok.log` 확인
-- 또는 `http://127.0.0.1:4040`에서 터널 상태 확인
+방법 1. 브라우저에서 확인
+- <http://127.0.0.1:4040>
+
+방법 2. 로그 파일 확인
+
+```powershell
+Get-Content .\ngrok.log
+```
+
+방법 3. PowerShell API 조회
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:4040/api/tunnels
+```
+
+위 출력에서 `public_url` 값을 확인하면 됩니다.
+
+---
+
+## 🪟 터미널 창 없이 백그라운드 실행
+
+배치 파일은 기본적으로 콘솔 창이 보입니다. 창 없이 실행하려면 PowerShell의 숨김 실행을 사용하세요.
+
+### 서버 숨김 실행
+
+```powershell
+Start-Process -WindowStyle Hidden -FilePath "uv" -ArgumentList "run uvicorn app.main:app --host 0.0.0.0 --port 8000" -WorkingDirectory "C:\Users\HJW\Documents\Dev\attendance_2"
+```
+
+### ngrok 숨김 실행
+
+```powershell
+Start-Process -WindowStyle Hidden -FilePath "ngrok" -ArgumentList "http 8000 --log=stdout" -WorkingDirectory "C:\Users\HJW\Documents\Dev\attendance_2" -RedirectStandardOutput "C:\Users\HJW\Documents\Dev\attendance_2\ngrok.log"
+```
+
+이렇게 실행하면 창은 안 보이지만, ngrok 주소는 아래 방식으로 확인할 수 있습니다.
+- `http://127.0.0.1:4040`
+- `ngrok.log`
+- `Invoke-RestMethod http://127.0.0.1:4040/api/tunnels`
 
 ---
 
