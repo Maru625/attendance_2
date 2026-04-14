@@ -11,8 +11,8 @@ import threading
 import logging
 
 logger = logging.getLogger(__name__)
-
-DATA_FILE = "reservations.json"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DATA_FILE = os.path.join(BASE_DIR, "reservations.json")
 _lock = threading.Lock()
 
 
@@ -79,3 +79,17 @@ def get_by_type(type_name: str) -> list[dict]:
     with _lock:
         data = _load()
         return [r for r in data if r.get('type') == type_name]
+
+
+def update_status(reservation_id: str, status: str, message: str = "") -> dict | None:
+    """예약 상태 업데이트"""
+    with _lock:
+        data = _load()
+        for i, r in enumerate(data):
+            if r.get('id') == reservation_id:
+                data[i]['status'] = status
+                if message:
+                    data[i]['status_message'] = message
+                _save(data)
+                return data[i]
+    return None

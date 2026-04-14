@@ -10,10 +10,39 @@ import logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-# 스케줄러
 scheduler = BackgroundScheduler()
-scheduler.start()
+_scheduler_initialized = False
+
+
+def init_scheduler():
+    """앱 시작 시 스케줄러를 1회만 초기화"""
+    global _scheduler_initialized
+
+    if _scheduler_initialized:
+        return
+
+    if not scheduler.running:
+        scheduler.start()
+
+    scheduler.add_job(
+        cleanup_old_reservations, 'cron',
+        hour=0, minute=0,
+        id='cleanup_7days_job',
+        replace_existing=True,
+    )
+    load_saved_jobs()
+    _scheduler_initialized = True
+    logger.info("예약 스케줄러 초기화 완료")
+
+
+def shutdown_scheduler():
+    """앱 종료 시 스케줄러 정리"""
+    global _scheduler_initialized
+
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
+    _scheduler_initialized = False
+    logger.info("예약 스케줄러 종료 완료")
 
 
 def _parse_datetime(date: str, time: str) -> datetime:
@@ -32,13 +61,8 @@ def _execute_check_in(reservation_id: str, name: str, late_reason: str = ""):
         reservation_service.update_status(reservation_id, "실패", f"'{name}' QR 데이터 없음")
         return
 
-    # 상태: 진행중
     reservation_service.update_status(reservation_id, "진행중")
-
-    # 출석 실행
     result = attendance_service.auto_check_in(qr_data, late_reason)
-
-    # 결과 저장
     reservation_service.update_status(
         reservation_id, result["status"], result["message"]
     )
@@ -86,43 +110,23 @@ def cleanup_old_reservations():
         logger.info(f"7일이 지난 과거 예약 {count}건을 자동 삭제했습니다.")
 
 
-# 매일 자정(00:00)에 과거 예약 청소 스케줄 등록
-scheduler.add_job(
-    cleanup_old_reservations, 'cron',
-    hour=0, minute=0,
-    id='cleanup_7days_job',
-    replace_existing=True,
-)
-
-# 서버 시동 시 기존 예약 복원
-load_saved_jobs()
-
-
-# ==========================================
-# API 엔드포인트
-# ==========================================
-
 @router.get("/employees")
 async def get_employees():
-    """등록된 직원 이름 목록 반환"""
     return attendance_service.get_employee_names()
 
 
 @router.get("/late-reasons")
 async def get_late_reasons():
-    """지각 사유 선택지 반환"""
     return attendance_service.get_late_reasons()
 
 
 @router.get("/site-health")
 async def get_site_health():
-    """출석 사이트 접속 상태 확인"""
     return attendance_service.check_site_health()
 
 
 @router.post("/schedule")
 async def schedule_reservation(reservation: Reservation):
-
     try:
         target_dt = _parse_datetime(reservation.date, reservation.time)
         target_dt_str = f"{reservation.date} {reservation.time}"
@@ -130,8 +134,6 @@ async def schedule_reservation(reservation: Reservation):
         raise HTTPException(status_code=400, detail="잘못된 날짜/시간 형식입니다.")
 
     now = datetime.now()
-
-    # 직원 등록 여부 확인
     qr_data = attendance_service.get_qr_data(reservation.name)
     if not qr_data:
         return JSONResponse(
@@ -139,14 +141,12 @@ async def schedule_reservation(reservation: Reservation):
             content={"message": f"'{reservation.name}'은(는) 등록된 직원이 아닙니다."},
         )
 
-    # 과거 시간 검증
     if target_dt <= now:
         return JSONResponse(
             status_code=400,
             content={"message": "현재 시간 이전의 예약은 등록할 수 없습니다."},
         )
 
-    # 중복 예약 검증: 같은 사람 + 같은 날짜 + 같은 유형은 1건만
     existing = reservation_service.get_all()
     for r in existing:
         if (
@@ -161,13 +161,11 @@ async def schedule_reservation(reservation: Reservation):
                 },
             )
 
-    # 예약 정보 저장
     res_entry = reservation.dict()
     res_entry['target_dt'] = target_dt_str
     res_entry['status'] = '대기중'
     res_entry = reservation_service.add(res_entry)
 
-    # 스케줄링
     scheduler.add_job(
         _execute_check_in, 'date',
         run_date=target_dt,
@@ -182,7 +180,6 @@ async def schedule_reservation(reservation: Reservation):
 
 @router.put("/schedule/{reservation_id}")
 async def update_reservation(reservation_id: str, reservation: Reservation):
-    """예약 수정"""
     try:
         target_dt = _parse_datetime(reservation.date, reservation.time)
         target_dt_str = f"{reservation.date} {reservation.time}"
@@ -203,7 +200,6 @@ async def update_reservation(reservation_id: str, reservation: Reservation):
             content={"message": f"'{reservation.name}'은(는) 등록된 직원이 아닙니다."},
         )
 
-    # 중복 예약 검증 (자기 자신 제외)
     existing = reservation_service.get_all()
     for r in existing:
         if (
@@ -230,7 +226,6 @@ async def update_reservation(reservation_id: str, reservation: Reservation):
             content={"message": "해당 예약을 찾을 수 없습니다."},
         )
 
-    # 새 시간으로 스케줄 덮어쓰기
     scheduler.add_job(
         _execute_check_in, 'date',
         run_date=target_dt,
@@ -244,7 +239,6 @@ async def update_reservation(reservation_id: str, reservation: Reservation):
 
 @router.delete("/schedule/{reservation_id}")
 async def delete_reservation(reservation_id: str):
-    """예약 삭제"""
     success = reservation_service.remove(reservation_id)
     if not success:
         return JSONResponse(
@@ -252,22 +246,19 @@ async def delete_reservation(reservation_id: str):
             content={"message": "해당 예약을 찾을 수 없습니다."},
         )
 
-    # 스케줄러에서 작업 취소
     try:
         scheduler.remove_job(reservation_id)
     except JobLookupError:
-        pass  # 이미 실행되었거나 없는 작업은 무시
+        pass
 
     return {"message": "예약이 삭제되었습니다."}
 
 
 @router.get("/reservations")
 async def get_reservations():
-    """전체 예약 목록"""
     return reservation_service.get_all()
 
 
 @router.get("/reservations/{type_name}")
 async def get_reservations_by_type(type_name: str):
-    """유형별 예약 목록 (출근/퇴근)"""
     return reservation_service.get_by_type(type_name)

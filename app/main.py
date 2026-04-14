@@ -1,19 +1,20 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.routers import reservation_router
-from app.services import camera_service
+from app.services import attendance_service
 
-# 로깅 설정
 logging.basicConfig(level=logging.INFO)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(os.path.dirname(BASE_DIR), "static")
 
 
 class NoCacheMiddleware(BaseHTTPMiddleware):
-    """모든 응답에 캐시 비활성화 헤더를 추가하여
-    ngrok/모바일 브라우저의 캐시 문제를 방지"""
+    """모든 응답에 캐시 비활성화 헤더를 추가하여 ngrok/모바일 브라우저 캐시 문제를 방지"""
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -24,21 +25,18 @@ class NoCacheMiddleware(BaseHTTPMiddleware):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """앱 시작 시 카메라 서비스 시작, 종료 시 정리"""
-    camera_service.start()
-    yield
-    camera_service.stop()
+    """앱 시작/종료 시 초기화 처리"""
+    attendance_service.load_employees()
+    reservation_router.init_scheduler()
+    try:
+        yield
+    finally:
+        reservation_router.shutdown_scheduler()
 
 
 app = FastAPI(lifespan=lifespan)
-
-# 캐시 비활성화 미들웨어 추가
 app.add_middleware(NoCacheMiddleware)
-
-# 정적 파일 서빙
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# 라우터 등록
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 app.include_router(reservation_router.router)
 
 
