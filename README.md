@@ -146,30 +146,57 @@ uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 - FastAPI 서버 실행
 - ngrok 터널 실행
 
-### ngrok 주소 확인
+### 외부 URL 확인 방법
+
+ngrok가 실행되면 외부에서 접속할 실제 주소는 `public_url`입니다.
 
 방법 1. 브라우저에서 확인
 - <http://127.0.0.1:4040>
+- 화면에 표시되는 `https://xxxx.ngrok-free.app` 주소가 외부 URL입니다.
 
-방법 2. 로그 파일 확인
+방법 2. PowerShell에서 바로 뽑기
 
 ```powershell
-Get-Content .\ngrok.log
+(Invoke-RestMethod http://127.0.0.1:4040/api/tunnels).tunnels.public_url
 ```
 
-방법 3. PowerShell API 조회
+보통 여기서 나온 `https://...ngrok-free.app` 주소가 외부 URL입니다.
+
+방법 3. JSON 전체 확인
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:4040/api/tunnels
 ```
 
-위 출력에서 `public_url` 값을 확인하면 됩니다.
+방법 4. 로그 파일 확인
+
+```powershell
+Get-Content .\ngrok.log
+```
+
+로그 안의 `url=` 또는 `started tunnel` 근처에 나온 `https://...` 주소가 외부 URL입니다.
 
 ---
 
 ## 🪟 터미널 창 없이 백그라운드 실행
 
-배치 파일은 기본적으로 콘솔 창이 보입니다. 창 없이 실행하려면 PowerShell의 숨김 실행을 사용하세요.
+배치 파일은 기본적으로 콘솔 창이 보입니다. 창 없이 실행하려면 아래 PowerShell 스크립트를 사용하세요.
+
+### 숨김 실행 스크립트
+
+- `start_server_hidden.ps1` : 서버만 숨김 실행
+- `start_ngrok_hidden.ps1` : ngrok만 숨김 실행
+- `start_all_hidden.ps1` : 서버와 ngrok를 순서대로 숨김 실행
+
+실행 예시:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start_server_hidden.ps1
+powershell -ExecutionPolicy Bypass -File .\start_ngrok_hidden.ps1
+powershell -ExecutionPolicy Bypass -File .\start_all_hidden.ps1
+```
+
+직접 명령으로도 가능:
 
 ### 서버 숨김 실행
 
@@ -183,10 +210,11 @@ Start-Process -WindowStyle Hidden -FilePath "uv" -ArgumentList "run uvicorn app.
 Start-Process -WindowStyle Hidden -FilePath "ngrok" -ArgumentList "http 8000 --log=stdout" -WorkingDirectory "C:\Users\HJW\Documents\Dev\attendance_2" -RedirectStandardOutput "C:\Users\HJW\Documents\Dev\attendance_2\ngrok.log"
 ```
 
-이렇게 실행하면 창은 안 보이지만, ngrok 주소는 아래 방식으로 확인할 수 있습니다.
-- `http://127.0.0.1:4040`
-- `ngrok.log`
-- `Invoke-RestMethod http://127.0.0.1:4040/api/tunnels`
+창이 안 보여도 외부 URL은 아래 명령으로 바로 확인할 수 있습니다:
+
+```powershell
+(Invoke-RestMethod http://127.0.0.1:4040/api/tunnels).tunnels.public_url
+```
 
 ---
 
