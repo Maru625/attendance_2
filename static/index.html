@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>출석 카메라 시스템</title>
+    <title>출석 예약 시스템</title>
+    <meta name="description" content="원격 출석 예약 관리 시스템">
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
@@ -11,13 +12,21 @@
     <div class="background-glass"></div>
     <div class="container">
         <div class="card">
-            <h1>📷 출석 카메라 예약</h1>
-            <p class="subtitle">지정된 시간에 카메라 이미지를 변경합니다.</p>
+            <h1>⏰ 출석 예약</h1>
+            <p class="subtitle">지정된 시간에 자동으로 출석을 처리합니다.</p>
             
+            <!-- 사이트 상태 표시 -->
+            <div id="siteStatus" class="site-status loading">
+                <span class="status-dot"></span>
+                <span class="status-text">출석 사이트 확인 중...</span>
+            </div>
+
             <form id="scheduleForm">
                 <div class="input-group">
-                    <label for="name">이름</label>
-                    <input type="text" id="name" placeholder="이미지 파일명과 동일해야 함 (예: 홍길동)" required>
+                    <label for="name">직원 선택</label>
+                    <select id="name" required>
+                        <option value="">직원을 선택하세요</option>
+                    </select>
                 </div>
                 
                 <div class="row">
@@ -50,6 +59,14 @@
                     </div>
                 </div>
 
+                <div class="input-group">
+                    <label for="lateReason">지각 사유 (사전 입력 권장)</label>
+                    <select id="lateReason">
+                        <option value="">미지정 시 기본값 자동 적용</option>
+                    </select>
+                    <p class="field-hint">지각이 감지되면 입력한 사유를 자동 제출하고, 비워두면 기본 사유로 자동 처리됩니다.</p>
+                </div>
+
                 <button type="submit" id="submitBtn">
                     <span class="btn-text">예약하기</span>
                     <div class="loader" id="loader"></div>
@@ -78,8 +95,8 @@
             <h2>📝 예약 수정</h2>
             <input type="hidden" id="editId">
             <div class="input-group">
-                <label for="editName">이름</label>
-                <input type="text" id="editName" required>
+                <label for="editName">직원 선택</label>
+                <select id="editName" required></select>
             </div>
             <div class="row">
                 <div class="input-group">
@@ -106,6 +123,10 @@
                         <span class="radio-custom"></span>퇴근
                     </label>
                 </div>
+            </div>
+            <div class="input-group">
+                <label for="editLateReason">지각 사유 (선택)</label>
+                <select id="editLateReason"></select>
             </div>
             <div class="modal-buttons">
                 <button onclick="saveEdit()" class="btn-save">저장</button>
